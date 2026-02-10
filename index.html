@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KEC Food Court</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+*{box-sizing:border-box;font-family:"Segoe UI",sans-serif}
+body{
+  margin:0;
+  background:url("https://images.unsplash.com/photo-1504674900247-0877df9cc836");
+  background-size:cover;
+  background-attachment:fixed;
+  color:#222;
+}
+body.dark{
+  background:url("https://images.unsplash.com/photo-1495195134817-aeb325a55b65");
+  background-size:cover;
+  color:#f2f2f2;
+}
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 20px;
+  background:#fff;
+}
+body.dark header{background:#2b2b2b}
+header img{height:50px}
+.container{
+  max-width:950px;
+  margin:20px auto;
+  background:#fff;
+  padding:20px;
+  border-radius:16px;
+}
+body.dark .container{background:#2a2a2a}
+.step{animation:fadeSlide .4s ease}
+@keyframes fadeSlide{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.hidden{display:none}
+button{
+  padding:10px 18px;
+  border:none;
+  border-radius:8px;
+  background:#8e0e00;
+  color:#fff;
+  cursor:pointer;
+}
+.back{background:#555}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:20px;
+}
+.card{
+  background:#f6f6f6;
+  padding:20px;
+  border-radius:14px;
+  text-align:center;
+  cursor:pointer;
+  transition:.25s;
+}
+.card:hover{
+  transform:translateY(-5px);
+  box-shadow:0 10px 22px rgba(0,0,0,.25);
+}
+body.dark .card{background:#3a3a3a}
+.menu{
+  background:#f7f7f7;
+  padding:20px;
+  border-radius:14px;
+}
+body.dark .menu{background:#3a3a3a}
+
+/* Loader */
+.loader{
+  width:60px;height:60px;
+  border:6px solid #ddd;
+  border-top:6px solid #8e0e00;
+  border-radius:50%;
+  margin:25px auto;
+  animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Success */
+.checkmark{
+  width:70px;height:70px;
+  border-radius:50%;
+  border:5px solid #00c853;
+  margin:auto;
+  position:relative;
+}
+.checkmark::after{
+  content:"";
+  position:absolute;
+  left:18px;top:32px;
+  width:15px;height:30px;
+  border-right:5px solid #00c853;
+  border-bottom:5px solid #00c853;
+  transform:rotate(45deg);
+}
+
+footer{text-align:center;padding:15px;color:#fff}
+</style>
+</head>
+
+<body>
+
+<header>
+  <img src="kec_logo.png">
+  <h3>Kongu Engineering College – Food Court</h3>
+  <button onclick="toggleDark()">Dark / Light</button>
+</header>
+
+<div class="container">
+
+<div id="step1" class="step">
+<h3>You are</h3>
+<button onclick="selectUser('student')">Student</button>
+<button onclick="selectUser('staff')">Staff</button>
+</div>
+
+<div id="details" class="step hidden">
+<h3>Details</h3>
+<div id="detailsForm"></div>
+<button onclick="saveDetails()">Next</button>
+</div>
+
+<div id="vegNonVeg" class="step hidden">
+<h3>Preference</h3>
+<button onclick="setType('veg')">Veg</button>
+<button onclick="setType('nonveg')">Non-Veg</button>
+</div>
+
+<div id="categories" class="step hidden">
+<h3>Select Category</h3>
+<div class="grid" id="categoryGrid"></div><br>
+<button class="back" onclick="go('vegNonVeg')">Back</button>
+</div>
+
+<div id="menuStep" class="step hidden">
+<h3 id="menuTitle"></h3>
+<div class="menu" id="menuItems"></div><br>
+<button class="back" onclick="go('categories')">Back</button>
+<button onclick="go('payment')">Proceed to Payment</button>
+</div>
+
+<div id="payment" class="step hidden">
+<h3>Mode of Payment</h3>
+<label><input type="radio" checked> Pay on Delivery</label><br><br>
+<button onclick="startDelivery()">Confirm & Proceed</button>
+</div>
+
+<div id="deliveryAnim" class="step hidden" style="text-align:center">
+<h3>Your food is being prepared 🍽️</h3>
+<div class="loader"></div>
+<div id="successTick" class="hidden">
+  <div class="checkmark"></div>
+  <p>Order Confirmed</p>
+</div>
+</div>
+
+<div id="billStep" class="step hidden">
+<div class="menu" id="billBox"></div><br>
+<button onclick="downloadBill()">Download Bill</button>
+</div>
+
+</div>
+
+<!-- ✅ CONTACT DETAILS UPDATED -->
+<footer>
+Contact: kecfoodcourt@kongu.edu
+</footer>
+
+<script>
+let foodType="", userType="";
+let selectedItems={}, userDetails={};
+
+/* 🔒 ORIGINAL MENU – NOT TOUCHED */
+const menus={
+veg:{
+"Noodles":[["Paneer Noodles",90],["Gobi Noodles",80],["Mushroom Noodles",90],["Veg Noodles",70],["Veg Schezwan Noodles",80]],
+"Fried Rice":[["Paneer Fried Rice",100],["Gobi Fried Rice",90],["Mushroom Fried Rice",100],["Veg Fried Rice",80]],
+"Roast":[["Paneer Roast",110],["Mushroom Roast",100],["Podi Roast",90]],
+"Starters":[["Paneer Manchurian",110],["Gobi Manchurian",90],["Mushroom Pepper",100],["Baby Corn Manchurian",95],["Mushroom 65",100]],
+"Juice":[["Apple",40],["Orange",35],["Mango",45],["Watermelon",30],["Sathukudi",40],["Pineapple",45]]
+},
+nonveg:{
+"Noodles":[["Egg Noodles",80],["Egg Schezwan Noodles",90],["Chicken Noodles",110]],
+"Fried Rice":[["Egg Fried Rice",90],["Chicken Fried Rice",120]],
+"Roast":[["Egg Roast",90],["Ghee Roast",100],["Masala Roast",100]],
+"Starters":[["Chicken Maharani",140],["Chicken Pallipalayam",150],["Chettinad Chicken",150],["Pepper Chicken",140],["Chicken 65",130]],
+"Biriyani":[["Chicken Biriyani",150]],
+"Gravy":[["Plain Gravy",90],["Chettinad Chicken Gravy",130],["Pepper Chicken Gravy",130],["Chicken Pallipalayam Gravy",140]]
+}
+};
+
+function toggleDark(){document.body.classList.toggle("dark")}
+function go(id){
+document.querySelectorAll(".step").forEach(s=>s.classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+}
+
+function selectUser(t){
+userType=t;
+detailsForm.innerHTML =
+t==="student" ?
+`<input id="roll" placeholder="Roll Number"><br><br>
+<input id="dept" placeholder="Department"><br><br>
+<input id="phone" placeholder="Phone Number"><br><br>` :
+`<input id="name" placeholder="Staff Name"><br><br>
+<input id="phone" placeholder="Phone Number"><br><br>`;
+go("details");
+}
+
+function saveDetails(){
+userDetails = userType==="student" ?
+{Roll:roll.value, Department:dept.value, Phone:phone.value} :
+{Name:name.value, Phone:phone.value};
+go("vegNonVeg");
+}
+
+function setType(t){
+foodType=t;
+go("categories");
+categoryGrid.innerHTML="";
+Object.keys(menus[t]).forEach(c=>{
+categoryGrid.innerHTML+=`<div class="card" onclick="openMenu('${c}')">${c}</div>`;
+});
+}
+
+function openMenu(c){
+go("menuStep");
+menuTitle.innerText=c;
+menuItems.innerHTML="";
+menus[foodType][c].forEach(i=>{
+menuItems.innerHTML+=`
+<label><input type="checkbox" data-name="${i[0]}" data-price="${i[1]}"
+onchange="toggleItem(this)"> ${i[0]} – ₹${i[1]}</label><br>`;
+});
+}
+
+function toggleItem(cb){
+cb.checked ? selectedItems[cb.dataset.name]=+cb.dataset.price : delete selectedItems[cb.dataset.name];
+}
+
+function startDelivery(){
+go("deliveryAnim");
+setTimeout(()=>{document.querySelector(".loader").style.display="none";successTick.classList.remove("hidden");},1500);
+setTimeout(generateBill,2500);
+}
+
+function generateBill(){
+let total=0,list="",info="";
+for(let k in userDetails) info+=`${k}: ${userDetails[k]}<br>`;
+for(let n in selectedItems){total+=selectedItems[n];list+=`${n} – ₹${selectedItems[n]}<br>`;}
+billBox.innerHTML=`<b>Kongu Engineering College – Food Court</b><br><br>${info}<hr>${list}<br><b>Total: ₹${total}</b><br><br>Contact: kecfoodcourt@kongu.edu`;
+go("billStep");
+}
+
+function downloadBill(){
+html2canvas(billBox).then(c=>{
+let a=document.createElement("a");
+a.download="KEC_Bill.jpg";
+a.href=c.toDataURL();
+a.click();
+});
+}
+</script>
+
+</body>
+</html>
